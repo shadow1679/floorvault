@@ -1,0 +1,15 @@
+# Deploy from the repo root (the Vercel project's Root Directory is "web"); only web/ is needed.
+.claude
+_bmad
+_bmad-output
+contracts
+node_modules
+.next
+.next-e2e-*
+.scan-cache
+.keeper-state.json
+e2e/.results
+e2e/.report
+.env*
+!.env.example
+tsconfig.tsbuildinfo

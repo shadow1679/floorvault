@@ -1,0 +1,11 @@
+{
+  "chainId": 10143,
+  "deployBlock": 70348704,
+  "floorVault": "0xb5c69fdd68b0531ce419b145fef30f942c352f35",
+  "raffle": "0x2af139a2686a40b6aad833e62afd463092c419b9",
+  "mockMarketplace": "0x902cd1fb98329d84664c301d150fa03ad3fec626",
+  "testChog": "0xc9213e85a516657f383002c25064cd9d84e4e347",
+  "treasury": "0x461723FFf16C0B6f8a11fFea2AA0f1d31FeD019a",
+  "deployTx": "0x311e2e3597858d98958802955846a0563ff66ef056a97872e3fe54b18116bbfa",
+  "deployedAt": "2026-10-12T08:23:05.884Z"
+}

@@ -1,0 +1,10 @@
+.next
+.next-e2e-*
+.scan-cache
+.keeper-state.json
+node_modules
+e2e/.results
+e2e/.report
+.env*
+!.env.example
+tsconfig.tsbuildinfo

@@ -1,0 +1,5 @@
+# The keeper image needs only package files and scripts/; ignore everything else (and never any .env or keystore).
+*
+!package.json
+!package-lock.json
+!scripts

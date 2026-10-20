@@ -1,9 +1,18 @@
 // Client for nad.fun's REST API. A coin has to go through it to be indexed: the image and metadata are
 // uploaded to nad.fun storage, the vanity salt is mined by the API, and later the chart is read from it.
 import type { Address, Hash } from "viem";
-import { NADFUN_API_URL } from "./constants";
+import { IS_MAINNET, NADFUN_API_URL } from "./constants";
 
-export const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+/**
+ * Where the browser sends nad.fun API calls. The testnet dev API only allows `localhost` origins (CORS), so
+ * a deployed site goes through our own `/api/nadfun` route, which forwards to `NADFUN_API_URL` server side.
+ * The mainnet API allows any origin, so it is called directly.
+ */
+export const NADFUN_BASE = IS_MAINNET ? NADFUN_API_URL : "/api/nadfun";
+
+// A proxied upload also has to fit the host's request body cap (Vercel: 4.5 MB), so it gets a smaller limit.
+export const IMAGE_MAX_MB = IS_MAINNET ? 5 : 4;
+export const IMAGE_MAX_BYTES = IMAGE_MAX_MB * 1024 * 1024;
 export const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"] as const;
 export const CHART_COUNTBACK = 3000;
 
@@ -33,7 +42,7 @@ async function readError(res: Response): Promise<string> {
 async function request<T>(fetchImpl: Fetch, path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
-    res = await fetchImpl(`${NADFUN_API_URL}${path}`, init);
+    res = await fetchImpl(`${NADFUN_BASE}${path}`, init);
   } catch {
     throw new NadfunApiError("Could not reach the nad.fun API. Check your connection and try again.", 0);
   }
@@ -44,7 +53,7 @@ async function request<T>(fetchImpl: Fetch, path: string, init?: RequestInit): P
 export function validateImageFile(file: { type: string; size: number } | null): string | null {
   if (!file) return "Add a picture for your coin.";
   if (!(IMAGE_TYPES as readonly string[]).includes(file.type)) return "Use a PNG, JPEG, WebP or SVG image.";
-  if (file.size > IMAGE_MAX_BYTES) return "The image must be 5 MB or smaller.";
+  if (file.size > IMAGE_MAX_BYTES) return `The image must be ${IMAGE_MAX_MB} MB or smaller.`;
   return null;
 }
 

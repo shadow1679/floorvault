@@ -3,10 +3,15 @@ import {
   chartResolution,
   fetchNadfunCandles,
   fetchNadfunMetadata,
+  NADFUN_BASE,
   NadfunApiError,
   prepareLaunchAssets,
   validateImageFile,
 } from "./nadfun";
+
+// The base is an absolute URL on mainnet and "/api/nadfun" on testnet, so read paths relative to it.
+const urlOfCall = (fn: ReturnType<typeof vi.fn>) => new URL((fn.mock.calls[0][0] as string).replace(NADFUN_BASE, ""), "http://nadfun.test");
+const pathOf = (url: string) => new URL(url.replace(NADFUN_BASE, ""), "http://nadfun.test").pathname;
 
 const VAULT = "0xB5C69fdd68B0531ce419b145feF30f942c352F35" as const;
 const TOKEN = "0x8D08d61A54Fd93f91CA294d0bC7db8783b9c9547" as const;
@@ -14,7 +19,7 @@ const png = () => new File(["x"], "a.png", { type: "image/png" });
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
 describe("validateImageFile", () => {
-  it("requires a supported type within 5 MB", () => {
+  it("requires a supported type within the size limit", () => {
     expect(validateImageFile(null)).toBeTruthy();
     expect(validateImageFile({ type: "image/gif", size: 10 })).toBeTruthy();
     expect(validateImageFile({ type: "image/png", size: 6 * 1024 * 1024 })).toBeTruthy();
@@ -26,7 +31,7 @@ describe("prepareLaunchAssets", () => {
   it("uploads the image, then the metadata, then mines the salt for the vault", async () => {
     const calls: { path: string; body: unknown }[] = [];
     const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
-      const path = new URL(url).pathname;
+      const path = pathOf(url);
       calls.push({ path, body: typeof init?.body === "string" ? JSON.parse(init.body) : init?.body });
       if (path === "/metadata/image") return json({ is_nsfw: false, image_uri: "https://storage.nadapp.net/coin/i" });
       if (path === "/metadata/metadata") return json({ metadata_uri: "https://storage.nadapp.net/metadata/m.json" });
@@ -78,7 +83,7 @@ describe("fetchNadfunCandles", () => {
     expect(await fetchNadfunCandles(TOKEN, { ageSeconds: 600, nowSeconds: 1000 }, fetchImpl)).toEqual([
       { time: 200, open: 1, high: 2, low: 1, close: 0.5 },
     ]);
-    const url = new URL((fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string);
+    const url = urlOfCall(fetchImpl as unknown as ReturnType<typeof vi.fn>);
     expect(url.pathname).toBe(`/trade/chart/${TOKEN}`);
     expect(url.searchParams.get("resolution")).toBe("1");
     expect(url.searchParams.get("to")).toBe("1000");

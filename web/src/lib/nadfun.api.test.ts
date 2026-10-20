@@ -1,14 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
-import { NADFUN_API_URL } from "./constants";
 import {
   CHART_COUNTBACK,
   fetchNadfunCandles,
   fetchNadfunMetadata,
   IMAGE_MAX_BYTES,
+  IMAGE_MAX_MB,
+  NADFUN_BASE,
   NadfunApiError,
   prepareLaunchAssets,
   validateImageFile,
 } from "./nadfun";
+
+// The base is an absolute URL on mainnet and "/api/nadfun" on testnet, so read paths relative to it.
+const urlOfCall = (fn: ReturnType<typeof vi.fn>) => new URL((fn.mock.calls[0][0] as string).replace(NADFUN_BASE, ""), "http://nadfun.test");
+const pathOf = (url: string) => new URL(url.replace(NADFUN_BASE, ""), "http://nadfun.test").pathname;
 
 const VAULT = "0xB5C69fdd68B0531ce419b145feF30f942c352F35" as const;
 const TOKEN = "0x8D08d61A54Fd93f91CA294d0bC7db8783b9c9547" as const;
@@ -22,7 +27,7 @@ const input = { name: "Chog", symbol: "CHG", creator: VAULT } as const;
 function launchApi(overrides: Partial<Record<"/metadata/image" | "/metadata/metadata" | "/token/salt", () => Response>> = {}) {
   const calls: { path: string; init?: RequestInit }[] = [];
   const impl = vi.fn(async (url: string, init?: RequestInit) => {
-    const path = new URL(url).pathname as "/metadata/image" | "/metadata/metadata" | "/token/salt";
+    const path = pathOf(url) as "/metadata/image" | "/metadata/metadata" | "/token/salt";
     calls.push({ path, init });
     const override = overrides[path];
     if (override) return override();
@@ -34,12 +39,12 @@ function launchApi(overrides: Partial<Record<"/metadata/image" | "/metadata/meta
 }
 
 describe("validateImageFile limits", () => {
-  it("accepts every listed type and the exact 5 MB boundary, rejects one byte over", () => {
+  it("accepts every listed type and the exact size limit, rejects one byte over", () => {
     for (const type of ["image/png", "image/jpeg", "image/webp", "image/svg+xml"]) {
       expect(validateImageFile({ type, size: 1 })).toBeNull();
     }
     expect(validateImageFile({ type: "image/png", size: IMAGE_MAX_BYTES })).toBeNull();
-    expect(validateImageFile({ type: "image/png", size: IMAGE_MAX_BYTES + 1 })).toMatch(/5 MB/);
+    expect(validateImageFile({ type: "image/png", size: IMAGE_MAX_BYTES + 1 })).toMatch(new RegExp(`${IMAGE_MAX_MB} MB`));
   });
 
   it("names the problem for each failure", () => {
@@ -65,7 +70,7 @@ describe("prepareLaunchAssets request shape", () => {
     expect(upload.init?.method).toBe("POST");
     expect(upload.init?.headers).toEqual({ "content-type": "image/png" });
     expect(upload.init?.body).toBe(image);
-    expect(impl.mock.calls[0][0]).toBe(`${NADFUN_API_URL}/metadata/image`);
+    expect(impl.mock.calls[0][0]).toBe(`${NADFUN_BASE}/metadata/image`);
   });
 
   it("sends the description only when there is one", async () => {
@@ -144,7 +149,7 @@ describe("prepareLaunchAssets failures", () => {
 
 describe("fetchNadfunCandles request and parsing", () => {
   const chart = (extra: object = {}) => ({ s: "ok", t: [100], o: ["1"], h: ["2"], l: ["1"], c: ["1.5"], v: ["1"], ...extra });
-  const urlOf = (fn: ReturnType<typeof vi.fn>) => new URL(fn.mock.calls[0][0] as string);
+  const urlOf = (fn: ReturnType<typeof vi.fn>) => urlOfCall(fn);
 
   it("asks for a price chart window that ends now and starts an hour before the coin", async () => {
     const impl = vi.fn(async () => json(chart()));

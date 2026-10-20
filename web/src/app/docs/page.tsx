@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import ContractList from "@/components/ContractList";
 import { CREATE_FEE_MON } from "@/lib/validation";
 import { IS_MAINNET, NETWORK } from "@/lib/constants";
+import { IMAGE_MAX_MB } from "@/lib/nadfun";
 import { Card, PageHeader } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Docs" };
@@ -87,7 +88,7 @@ export default function DocsPage() {
                 <B>Name and symbol:</B> up to 32 characters for the name; letters and numbers, up to 10, for the symbol.
               </li>
               <li>
-                <B>Picture:</B> PNG, JPEG, WebP or SVG, up to 5 MB. It is uploaded to nad.fun together with the coin&apos;s
+                <B>Picture:</B> PNG, JPEG, WebP or SVG, up to {IMAGE_MAX_MB} MB. It is uploaded to nad.fun together with the coin&apos;s
                 metadata, so the coin also shows up on nad.fun with its image and a chart. The coin&apos;s address is mined
                 to end in <code className="font-mono text-text">7777</code> before launch, which takes a moment.
               </li>

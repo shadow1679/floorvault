@@ -19,7 +19,7 @@ import { CoinAvatar } from "./art";
 import { ConfigGate } from "./ConfigNotice";
 import { isBusy, TxButton, TxStatus } from "./tx";
 import { Button, Card, cx } from "./ui";
-import { IMAGE_TYPES } from "@/lib/nadfun";
+import { IMAGE_MAX_MB, IMAGE_TYPES } from "@/lib/nadfun";
 import { useCollection } from "@/lib/hooks";
 
 export default function LaunchFormPage() {
@@ -164,7 +164,7 @@ function LaunchInner() {
             id={id("image")}
             label="Picture"
             error={err("image")}
-            hint="PNG, JPEG, WebP or SVG, up to 5 MB. It is uploaded to nad.fun so the coin shows up there too."
+            hint={`PNG, JPEG, WebP or SVG, up to ${IMAGE_MAX_MB} MB. It is uploaded to nad.fun so the coin shows up there too.`}
           >
             <input
               id={id("image")}

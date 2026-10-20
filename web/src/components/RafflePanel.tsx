@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useConnection } from "wagmi";
 import type { Coin } from "@/lib/chain";
 import { isSameAddress } from "@/lib/format";
@@ -24,10 +24,13 @@ export function RafflePanel({ coin, collectionName }: { coin: Coin; collectionNa
   const raffles = useMemo(() => deriveRaffles(vault.data?.raffleLogs ?? [], coin.token), [vault.data?.raffleLogs, coin.token]);
   const winners = useMemo(() => deriveWinners(vault.data?.raffleLogs ?? [], coin.token), [vault.data?.raffleLogs, coin.token]);
   const states = useRaffleStates(raffles.map((r) => r.id));
+  // A card the viewer just claimed stays up (as a "Claimed" card) until the page reloads. Dropping it the
+  // moment the claim lands makes the win look like it was taken away; it shows in the history afterwards.
+  const [justClaimed, setJustClaimed] = useState<ReadonlySet<string>>(new Set());
 
   const live = raffles.filter((r) => {
     const s = states.data?.get(r.id.toString());
-    if (!s) return true;
+    if (!s || justClaimed.has(r.id.toString())) return true;
     const kind = raffleStep(s, now).kind;
     return kind !== "claimed" && kind !== "fallback";
   });
@@ -58,7 +61,12 @@ export function RafflePanel({ coin, collectionName }: { coin: Coin; collectionNa
           return (
             <li key={r.id.toString()}>
               {state ? (
-                <RaffleCard summary={r} state={state} collectionName={collectionName} />
+                <RaffleCard
+                  summary={r}
+                  state={state}
+                  collectionName={collectionName}
+                  onClaimed={() => setJustClaimed((prev) => new Set(prev).add(r.id.toString()))}
+                />
               ) : (
                 <Skeleton className="h-40" />
               )}
@@ -97,10 +105,12 @@ function RaffleCard({
   summary,
   state,
   collectionName,
+  onClaimed,
 }: {
   summary: RaffleSummary;
   state: RaffleState;
   collectionName: string;
+  onClaimed: () => void;
 }) {
   const now = useNowSeconds();
   const { address } = useConnection();
@@ -166,13 +176,27 @@ function RaffleCard({
               </p>
             </div>
             {mine ? (
-              <TxButton busy={busy} onAction={() => void send({ fn: "claim", id: summary.id })} className="w-full sm:w-auto">
+              <TxButton busy={busy} onAction={() => void send({ fn: "claim", id: summary.id }).then((r) => r && onClaimed())} className="w-full sm:w-auto">
                 {busy ? "Claiming…" : "Claim NFT"}
               </TxButton>
             ) : (
               <p className="text-xs text-muted">Connect the winner wallet to claim.</p>
             )}
           </>
+        ) : null}
+
+        {step.kind === "claimed" ? (
+          <div className={cx("rounded-2xl border p-3", isWinner ? "border-mint/40 bg-mint/10" : "border-line")}>
+            <p className="text-sm text-muted">Winner</p>
+            <p className="break-all font-display text-lg font-semibold">
+              <AddressLink address={state.winner} />
+              {isWinner ? <span className="ml-2 text-mint">you</span> : null}
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              {isWinner ? "Claimed. The NFT is in your wallet." : "Claimed by the winner."} It is listed under Giveaway
+              history below.
+            </p>
+          </div>
         ) : null}
 
         {step.kind === "expired" ? (
@@ -195,11 +219,6 @@ function RaffleCard({
         ) : null}
 
         <TxStatus state={tx} />
-        {tx.phase === "success" ? (
-          <p role="status" className="text-sm font-bold text-mint">
-            Claimed. The page updates in a few seconds.
-          </p>
-        ) : null}
       </div>
     </Card>
   );

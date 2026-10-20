@@ -160,7 +160,8 @@ export async function fetchNadfunMetadata(
   fetchImpl: Fetch = fetch,
 ): Promise<{ name?: string; symbol?: string; description?: string; image?: string }> {
   if (!/^https:\/\/storage\.nadapp\.net\//.test(uri)) return {};
-  const res = await fetchImpl(uri);
+  // The storage host only allows `localhost` origins (CORS), so the browser reads it through our own route.
+  const res = await fetchImpl(typeof window !== "undefined" ? `/api/coin-metadata?uri=${encodeURIComponent(uri)}` : uri);
   if (!res.ok) throw new NadfunApiError(`metadata HTTP ${res.status}`, res.status);
   const raw = (await res.json()) as Record<string, unknown>;
   const str = (v: unknown) => (typeof v === "string" && v.trim() !== "" ? v.trim().slice(0, 500) : undefined);

@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useConnection, useSwitchChain, useWriteContract } from "wagmi";
 import { parseEventLogs, type Address, type Hash } from "viem";
+import { demoFeePotAbi } from "@/abi/DemoFeePot";
 import { floorVaultAbi } from "@/abi/FloorVault";
 import { raffleAbi } from "@/abi/Raffle";
 import { erc20Abi } from "@/abi/erc20";
@@ -119,6 +120,46 @@ export function useBuy() {
     [address, run, writeContractAsync],
   );
   return { state, buy, reset };
+}
+
+export type DemoFundResult = { fundHash: Hash; harvestHash: Hash; funded: bigint; toBudget: bigint };
+
+/**
+ * Testnet demo only: pay MON into the vault's DemoFeePot for a coin, then harvest it, which splits the pot
+ * 10/10/80 and credits the coin's budget. `harvest` is permissionless, so the same wallet can run both steps
+ * instead of waiting for the keeper's next pass. Two wallet prompts.
+ */
+export function useDemoFund() {
+  const { address } = useConnection();
+  const { writeContractAsync } = useWriteContract();
+  const { state, run, reset } = useTxRunner<DemoFundResult>("harvest");
+
+  const fund = useCallback(
+    (pot: Address, token: Address, amount: bigint) =>
+      run(async (set) => {
+        const cfg = requireConfig();
+        const fundCall = { address: pot, abi: demoFeePotAbi, functionName: "fund", args: [token], value: amount } as const;
+        await publicClient.simulateContract({ ...fundCall, account: address });
+        set("wallet");
+        const fundHash = await writeContractAsync({ ...fundCall, chainId: monadChain.id });
+        set("confirming", fundHash);
+        const funded = await publicClient.waitForTransactionReceipt({ hash: fundHash });
+        if (funded.status !== "success") throw new Error("Funding transaction reverted.");
+
+        const harvestCall = { address: cfg.floorVault, abi: floorVaultAbi, functionName: "harvest", args: [token] } as const;
+        set("simulating");
+        await publicClient.simulateContract({ ...harvestCall, account: address });
+        set("wallet");
+        const harvestHash = await writeContractAsync({ ...harvestCall, chainId: monadChain.id });
+        set("confirming", harvestHash);
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: harvestHash });
+        if (receipt.status !== "success") throw new Error("Harvest transaction reverted.");
+        const [ev] = parseEventLogs({ abi: floorVaultAbi, logs: receipt.logs, eventName: "Harvested" });
+        return { fundHash, harvestHash, funded: amount, toBudget: ev ? ev.args.toBudget : 0n };
+      }),
+    [address, run, writeContractAsync],
+  );
+  return { state, fund, reset };
 }
 
 /** Sends the winner's `claim`. Only the winner can; the rest of the raffle is driven by the keeper. */

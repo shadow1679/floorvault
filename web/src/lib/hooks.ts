@@ -11,6 +11,7 @@ import {
   getCollectionSupply,
   getAllRaffleStates,
   getCurveInfo,
+  getDemoPot,
   getFloor,
   getKeeper,
   getNftImage,
@@ -89,6 +90,17 @@ export function useKeeper() {
     queryFn: () => getKeeper(cfg!),
     enabled: !!cfg,
     staleTime: 60_000,
+  });
+}
+
+/** The testnet demo fee pot, or null/undefined when this vault has none. Never set on mainnet. */
+export function useDemoPot() {
+  const cfg = configResult.ok ? configResult.config : null;
+  return useQuery({
+    queryKey: ["demo-pot", cfg?.floorVault],
+    queryFn: () => getDemoPot(cfg!),
+    enabled: !!cfg && !IS_MAINNET,
+    staleTime: Infinity,
   });
 }
 

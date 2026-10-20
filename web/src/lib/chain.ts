@@ -9,6 +9,7 @@ import {
   zeroAddress,
   type PublicClient,
 } from "viem";
+import { floorVaultDemoAbi } from "@/abi/DemoFeePot";
 import { floorVaultAbi } from "@/abi/FloorVault";
 import { raffleAbi } from "@/abi/Raffle";
 import { mockMarketplaceAbi } from "@/abi/MockMarketplace";
@@ -520,6 +521,16 @@ export async function getFloor(
 /** FloorVault.keeper(): the only address that may call buy, or the zero address when anyone may. */
 export async function getKeeper(cfg: AppConfig, client: PublicClient = publicClient): Promise<Address> {
   return client.readContract({ address: cfg.floorVault, abi: floorVaultAbi, functionName: "keeper" });
+}
+
+/** The testnet DemoFeePot of a `FloorVaultDemo`, or null when this is a regular FloorVault (or mainnet). */
+export async function getDemoPot(cfg: AppConfig, client: PublicClient = publicClient): Promise<Address | null> {
+  if (cfg.chainId !== MONAD_TESTNET_ID) return null;
+  try {
+    return await client.readContract({ address: cfg.floorVault, abi: floorVaultDemoAbi, functionName: "demoPot" });
+  } catch {
+    return null;
+  }
 }
 
 export type CollectionInfo = { address: Address; name: string };

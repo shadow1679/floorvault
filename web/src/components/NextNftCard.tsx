@@ -2,6 +2,7 @@
 
 import type { Coin, CurveInfo, Floor } from "@/lib/chain";
 import { formatMon, monLabel, nextBuyProgress, volumeToCloseGap } from "@/lib/format";
+import { DemoFund } from "./DemoFund";
 import { Card, Skeleton, cx } from "./ui";
 
 /**
@@ -57,18 +58,25 @@ export function NextNftCard({
         {p.ready ? (
           <p className="mt-3 text-sm text-mint">The budget covers the floor. The keeper buys it automatically.</p>
         ) : (
-          <p className="mt-3 text-sm text-muted">
-            {monLabel(p.gap)} more budget to go.
-            {volume > 0n ? (
-              <>
-                {" "}
-                At this coin&apos;s {(curve!.creatorFeeBps / 100).toString()}% creator fee that is roughly{" "}
-                <span className="font-bold text-text">{formatMon(volume, volume < 10n ** 19n ? 2 : 0)} MON</span> more trading. nad.fun pays fees out in
-                batches, then the keeper harvests them into budget.
-              </>
-            ) : null}
-          </p>
+          <>
+            <p className="mt-3 text-sm text-muted">
+              {monLabel(p.gap)} more budget to go.
+              {volume > 0n ? (
+                <>
+                  {" "}
+                  At this coin&apos;s {(curve!.creatorFeeBps / 100).toString()}% creator fee that is roughly{" "}
+                  <span className="font-bold text-text">{formatMon(volume, volume < 10n ** 19n ? 2 : 0)} MON</span> more trading.
+                </>
+              ) : null}
+            </p>
+            <p className="mt-2 text-xs text-muted">
+              Note: nad.fun does not pay creator fees out per trade. It holds them and settles them to the vault in batches, once about
+              100 MON of fees have built up. Until then this bar can stay at 0% even while the coin trades. After each settlement the
+              keeper harvests the fees into budget.
+            </p>
+          </>
         )}
+        <DemoFund coin={coin} gap={p.gap} />
       </>
     );
   }
